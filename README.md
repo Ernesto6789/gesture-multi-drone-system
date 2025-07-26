@@ -62,7 +62,7 @@ _Includes gesture input module, encrypted communication layer, and multi-drone c
 - [ ] Capture and interpret operator gestures for drone control
 - [ ] Optimize gesture recognition for fast, accurate commands
 
-### Phase 4: Swarm Coordination & Navigation
+### Phase 4: Multi Coordination & Navigation
 - [ ] Develop multi-drone command broadcasting and synchronization
 - [ ] Implement assistive navigation algorithms for obstacle avoidance and pathfinding in complex environments
 
