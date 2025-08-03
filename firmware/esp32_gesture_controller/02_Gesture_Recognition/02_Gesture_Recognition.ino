@@ -33,11 +33,28 @@ void loop() {
   float ay = accel.y();
   float az = accel.z();
 
-  if (ax > 3) newGesture = RIGHT;
-  else if (ax < -3) newGesture = LEFT;
-  else if (ay > 3) newGesture = UP;
-  else if (ay < -3) newGesture = DOWN;
-  else newGesture = CENTERED;
+  // Movement Thresholds
+  float onThreshold = 3.0;
+  float offThreshold = 2.0; // Slightly lower
+
+  if (currentGesture == CENTERED) {
+    if (ax > onThreshold) newGesture = RIGHT;
+    else if (ax < -onThreshold) newGesture = LEFT;
+    else if (ay > onThreshold) newGesture = UP;
+    else if (ay < -onThreshold) newGesture = DOWN;
+  } 
+  else if (currentGesture == RIGHT && ax < offThreshold) {
+    newGesture = CENTERED;
+  }
+  else if (currentGesture == LEFT && ax > -offThreshold) {
+    newGesture = CENTERED;
+  }
+  else if (currentGesture == UP && ay < offThreshold) {
+    newGesture = CENTERED;
+  }
+  else if (currentGesture == DOWN && ay > -offThreshold) {
+    newGesture = CENTERED;
+  }
 
 /*
   // Detect tilt
