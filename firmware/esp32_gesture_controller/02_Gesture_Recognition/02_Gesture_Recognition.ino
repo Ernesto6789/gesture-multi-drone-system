@@ -3,6 +3,10 @@
 #include <utility/imumaths.h>
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
+//Stateful Gesture
+enum GestureState { CENTERED, LEFT, RIGHT, UP, DOWN };
+GestureState currentGesture = CENTERED;
+GestureState newGesture = CENTERED;
 
 void setup() {
   Serial.begin(115200);
@@ -13,16 +17,27 @@ void setup() {
   delay(1000);
 }
 
-//Stateful Gesture
-enum GestureState { CENTERED, LEFT, RIGHT, UP, DOWN };
-GestureState currentGesture = CENTERED;
+//Function Mapping
+void moveRight() {Serial.println("Moving Right");}
+void moveLeft() {Serial.println("Moving Left");}
+void moveUp() {Serial.println("Moving Up");}
+void moveDown() {Serial.println("Moving Down");}
+
+void hover() { Serial.println("Hovering"); }
 
 void loop() {
   // Get acceleration (m/s^2)
   imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+
   float ax = accel.x();
   float ay = accel.y();
   float az = accel.z();
+
+  if (ax > 3) newGesture = RIGHT;
+  else if (ax < -3) newGesture = LEFT;
+  else if (ay > 3) newGesture = UP;
+  else if (ay < -3) newGesture = DOWN;
+  else newGesture = CENTERED;
 
 /*
   // Detect tilt
@@ -33,22 +48,16 @@ void loop() {
   else Serial.println("Centered");
 */
 
-  GestureState newGesture = CENTERED;
-
-  if (ax > 3) newGesture = RIGHT;
-  else if (ax < -3) newGesture = LEFT;
-  else if (ay > 3) newGesture = UP;
-  else if (ay < -3) newGesture = DOWN;
-
   if (newGesture != currentGesture) {
-      currentGesture = newGesture;
-
-    if (currentGesture == RIGHT) Serial.println("Currrent Gesture: Tilted Right");
-    else if (currentGesture == LEFT) Serial.println("Current Gesture: Tilted Left");
-    else if (currentGesture == UP) Serial.println("Current Gesture: Tilted Up");
-    else if (currentGesture == DOWN) Serial.println("Current Gesture: Tilted Down");
-    else Serial.println("Gesture: Centered");
-  }
+    currentGesture = newGesture;
+    switch (currentGesture) {
+        case RIGHT: moveRight(); break;
+        case LEFT:  moveLeft(); break;
+        case UP:    moveUp(); break;
+        case DOWN:  moveDown(); break;
+        case CENTERED: hover(); break;
+    }
+}
 
 /*
   // Debug values
