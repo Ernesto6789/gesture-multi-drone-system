@@ -5,20 +5,20 @@
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
 //Stateful Gesture
 enum GestureState { CENTERED, LEFT, RIGHT, UP, DOWN };
+enum TwistState { TWIST_CENTERED, FORWARD, BACKWARD };
+
 GestureState currentGesture = CENTERED;
+TwistState currentTwistGesture = TWIST_CENTERED;
 GestureState newGesture = CENTERED;
+TwistState newTwistGesture = TWIST_CENTERED;
 
 //Tilt Thresholds
 float onThreshold = 3.0;
-float offThreshold = 2.0; // Slightly lower for hysteresis
+float offThreshold = 2.0; //Hysterisis
 
-//Double Tap Thresholds
-float tapThreshold = 15.0; // m/s², tune this
-unsigned long lastTapTime = 0;
-unsigned long doubleTapWindow = 300; // ms
-bool firstTapDetected = false;
-
-
+//Gryro Thresholds
+float twistOnThreshold = 30;
+float twistOffThreshold = 25; //Hysterisis
 
 void setup() 
 {
@@ -35,7 +35,8 @@ void moveRight() {Serial.println("Moving Right");}
 void moveLeft() {Serial.println("Moving Left");}
 void moveUp() {Serial.println("Moving Up");}
 void moveDown() {Serial.println("Moving Down");}
-
+void moveForward(){Serial.println("Moving Foward");}
+void moveBackward(){Serial.println("Moving Backward");}
 void hover() { Serial.println("Hovering"); }
 
 void detectTilt(float ax, float ay)
@@ -70,39 +71,43 @@ void detectTilt(float ax, float ay)
   }
 }
 
-void detectDoubleTap(float ax, float ay, float az)
+void detectFowardBackMotion(float gz)
 {
-  float magnitude = sqrt(ax * ax + ay * ay + az * az);
+  if (currentTwistGesture == TWIST_CENTERED){
+    if (gz > twistOnThreshold) newTwistGesture = FORWARD;
+    else if (gz < -twistOnThreshold) newTwistGesture = BACKWARD;
+  } 
+  else if (currentTwistGesture == FORWARD && gz < twistOffThreshold){
+    newTwistGesture = TWIST_CENTERED;
+  } 
+  else if (currentTwistGesture == BACKWARD && gz > -twistOffThreshold){
+    newTwistGesture = TWIST_CENTERED;
+  }
 
-    if (magnitude > tapThreshold) {
-      unsigned long now = millis();
-
-      if (!firstTapDetected) {
-        firstTapDetected = true;
-        lastTapTime = now;
-      } 
-      else if (now - lastTapTime <= doubleTapWindow) {
-        Serial.println("Double tap detected!");
-        firstTapDetected = false; // reset
-      } 
-      else {
-        // Too slow, treat as new first tap
-        lastTapTime = now;
-      }
+  if (newGesture != currentTwistGesture) {
+    currentTwistGesture = newTwistGesture;
+    switch (currentTwistGesture) {
+        case FORWARD: moveForward(); break;
+        case BACKWARD:  moveBackward(); break;
     }
+  }
 }
+
 
 void loop() 
 {
   // Get acceleration (m/s^2)
   imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  // Get gyro rotation (degrees/sec)
+  imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+
   float ax = accel.x();
   float ay = accel.y();
   float az = accel.z();
+  float gz = gyro.z();
 
   detectTilt(ax, ay);
-  detectDoubleTap(ax, ay, az);
-
+  detectFowardBackMotion(gz);
   delay(10);
 }
 
