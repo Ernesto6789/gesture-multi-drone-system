@@ -8,7 +8,20 @@ enum GestureState { CENTERED, LEFT, RIGHT, UP, DOWN };
 GestureState currentGesture = CENTERED;
 GestureState newGesture = CENTERED;
 
-void setup() {
+//Tilt Thresholds
+float onThreshold = 3.0;
+float offThreshold = 2.0; // Slightly lower for hysteresis
+
+//Double Tap Thresholds
+float tapThreshold = 15.0; // m/s², tune this
+unsigned long lastTapTime = 0;
+unsigned long doubleTapWindow = 300; // ms
+bool firstTapDetected = false;
+
+
+
+void setup() 
+{
   Serial.begin(115200);
   if (!bno.begin()) {
     Serial.println("BNO055 not detected. Can't proceed!");
@@ -25,18 +38,8 @@ void moveDown() {Serial.println("Moving Down");}
 
 void hover() { Serial.println("Hovering"); }
 
-void loop() {
-  // Get acceleration (m/s^2)
-  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-
-  float ax = accel.x();
-  float ay = accel.y();
-  float az = accel.z();
-
-  // Movement Thresholds
-  float onThreshold = 3.0;
-  float offThreshold = 2.0; // Slightly lower
-
+void detectTilt(float ax, float ay)
+{
   if (currentGesture == CENTERED) {
     if (ax > onThreshold) newGesture = RIGHT;
     else if (ax < -onThreshold) newGesture = LEFT;
@@ -55,16 +58,6 @@ void loop() {
   else if (currentGesture == DOWN && ay > -offThreshold) {
     newGesture = CENTERED;
   }
-
-/*
-  // Detect tilt
-  if (ax > 3) Serial.println("Tilt Right");
-  else if (ax < -3) Serial.println("Tilt Left");
-  else if (ay > 3) Serial.println("Tilt Up");
-  else if (ay < -3) Serial.println("Tilt Down");
-  else Serial.println("Centered");
-*/
-
   if (newGesture != currentGesture) {
     currentGesture = newGesture;
     switch (currentGesture) {
@@ -74,6 +67,43 @@ void loop() {
         case DOWN:  moveDown(); break;
         case CENTERED: hover(); break;
     }
+  }
+}
+
+void detectDoubleTap(float ax, float ay, float az)
+{
+  float magnitude = sqrt(ax * ax + ay * ay + az * az);
+
+    if (magnitude > tapThreshold) {
+      unsigned long now = millis();
+
+      if (!firstTapDetected) {
+        firstTapDetected = true;
+        lastTapTime = now;
+      } 
+      else if (now - lastTapTime <= doubleTapWindow) {
+        Serial.println("Double tap detected!");
+        firstTapDetected = false; // reset
+      } 
+      else {
+        // Too slow, treat as new first tap
+        lastTapTime = now;
+      }
+    }
+}
+
+void loop() 
+{
+  // Get acceleration (m/s^2)
+  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  float ax = accel.x();
+  float ay = accel.y();
+  float az = accel.z();
+
+  detectTilt(ax, ay);
+  detectDoubleTap(ax, ay, az);
+
+  delay(10);
 }
 
 /*
@@ -81,7 +111,7 @@ void loop() {
   Serial.print("AX: "); Serial.print(ax);
   Serial.print(" AY: "); Serial.print(ay);
   Serial.print(" AZ: "); Serial.println(az);
+  delay(100);
 */
 
-  delay(100);
-}
+  
